@@ -3,6 +3,20 @@ import * as serveStatic from 'serve-static';
 import * as path from 'path';
 import * as http from 'http';
 import * as WebSocket from 'ws';
+interface Line {
+    coords: Point[]
+}
+
+interface Point {
+    x: number,
+    y: number
+}
+
+var LineCollection: { [key: string]: Line };
+
+
+
+
 const server = http.createServer();
 const wss = new WebSocket.Server({ port: 8080 });
 
