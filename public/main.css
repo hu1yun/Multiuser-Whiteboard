@@ -1,12 +1,23 @@
-h1 {
-	color: blue;
+body{
+	overflow: hidden;
+	margin: 0px;
 }
-.header-red{
-	color: red;
+#owo-board {
+	width: 100%;
+	height: 100vh;
+	position: absolute;
+	background-color: rgb(204, 247, 255);
 }
-div.basic-block{
-	width:100px;
-	height:100px;
-	background-color:cyan;
-	overflow:scroll;
+.palette {
+	position: absolute;
+	width: 50px;
+	height: 110px;
+	padding: 10px;
+	background-color: rgb(134, 134, 134);
+}
+.palette-tool {
+	width: 50px;
+	height: 50px;
+	margin: 0px 0px 10px 0px;
+	background-color: rgb(184, 184, 184);
 }
