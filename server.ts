@@ -29,8 +29,12 @@ server.on('request', app);
 
 console.log('Server is online!');
 wss.on('connection', (ws) => {
-	ws.on('message', (message) =>{
-		console.log('we receive message:',message);
+	ws.on('message', (message: any) =>{
+        var line= JSON.parse(message);
+        wss.clients.forEach((client)=> {
+            client.send(JSON.stringify(line));
+
+        });
 	});
 });
 app.listen(8000);

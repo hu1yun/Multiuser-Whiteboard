@@ -1,6 +1,14 @@
 var ws = new WebSocket('ws://' + location.hostname + ':8080');
 ws.onmessage = function (ev) {
-	console.log(ev);
+	var line= JSON.parse(ev.data);
+	//console.log(ev.coords);
+	drawLine(line.coords);
+}
+function sendLineToServer(linepoints){
+	var line= {
+		coords: linepoints
+	};
+	ws.send(JSON.stringify(line));
 }
 var canvas;
 // function initializeDrawTool() {
@@ -49,7 +57,7 @@ function initializeMousehandlers() {
 	});
 	$('#owo-board').mouseup((e) => {
 		mouseDown = false;
-		drawLine(line);
+		sendLineToServer(line);
 	});
 	$('#owo-board').mousemove((e) => {
 	//	console.log('Coords: (x: ' + e.clientX + ', y: ' + e.clientY + ' )');
