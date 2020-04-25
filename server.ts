@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as http from 'http';
 import * as WebSocket from 'ws';
 interface Line {
+    id: string, 
     coords: Point[]
 }
 
@@ -12,8 +13,8 @@ interface Point {
     y: number
 }
 
-var LineCollection: { [key: string]: Line };
-
+var lineCollection: { [key: string]: Line } = {};
+var lineCount = 0;
 
 
 
@@ -27,16 +28,20 @@ var app = express();
 app.use(serveStatic(path.resolve(__dirname, 'public')));
 server.on('request', app);
 
+
 console.log('Server is online!');
 wss.on('connection', (ws) => {
-	ws.on('message', (message: any) =>{
-        var line= JSON.parse(message);
+    ws.send('/lineCollection '+JSON.stringify(lineCollection));
+    ws.on('message', (message: any) =>{
+        var line: Line = JSON.parse(message);
+        line.id = 'line'+lineCount;
+        lineCollection['line'+lineCount] = line;
+        lineCount++;
         wss.clients.forEach((client)=> {
-            client.send(JSON.stringify(line));
+            client.send('/line '+JSON.stringify(line));
+
 
         });
 	});
 });
 app.listen(8000);
-
-

@@ -1,11 +1,24 @@
 var ws = new WebSocket('ws://' + location.hostname + ':8080');
+var lineCollection = {};
 ws.onmessage = function (ev) {
-	var line= JSON.parse(ev.data);
-	//console.log(ev.coords);
-	drawLine(line.coords);
+	var cmd = ev.data.substring(0, ev.data.indexOf(' '));
+	var object = ev.data.substring(ev.data.indexOf(' ')+1);
+	if (cmd == '/line') {
+		var line = JSON.parse(object);
+		lineCollection[line.id] = line; 
+		drawLine(line.coords);
+	}
+	else if (cmd == '/lineCollection') {
+		lineCollection = JSON.parse(object);
+		Object.keys(lineCollection).forEach((lineKey) => {
+			var coords = lineCollection[lineKey].coords;
+			drawLine(coords);
+		});
+	}
 }
 function sendLineToServer(linepoints){
 	var line= {
+		id: null,
 		coords: linepoints
 	};
 	ws.send(JSON.stringify(line));
@@ -84,6 +97,10 @@ $(document).ready(() => {
     document.getElementById("owo-board").height = window.innerHeight;
     $(window).resize(() => {
         document.getElementById("owo-board").width = window.innerWidth;
-        document.getElementById("owo-board").height = window.innerHeight;
+		document.getElementById("owo-board").height = window.innerHeight;
+		Object.keys(lineCollection).forEach((lineKey) => {
+			var coords = lineCollection[lineKey].coords;
+			drawLine(coords);
+		});
     });
 });
