@@ -5,7 +5,8 @@ import * as http from 'http';
 import * as WebSocket from 'ws';
 interface Line {
     id: string, 
-    coords: Point[]
+    coords: Point[],
+    color: string
 }
 
 interface Point {

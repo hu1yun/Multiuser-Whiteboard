@@ -1,25 +1,31 @@
 var ws = new WebSocket('ws://' + location.hostname + ':8080');
 var lineCollection = {};
+var selecting= true;
+var color = '#000000';
+
+
 ws.onmessage = function (ev) {
 	var cmd = ev.data.substring(0, ev.data.indexOf(' '));
 	var object = ev.data.substring(ev.data.indexOf(' ')+1);
 	if (cmd == '/line') {
 		var line = JSON.parse(object);
 		lineCollection[line.id] = line; 
-		drawLine(line.coords);
+		drawLine(line);
 	}
 	else if (cmd == '/lineCollection') {
 		lineCollection = JSON.parse(object);
 		Object.keys(lineCollection).forEach((lineKey) => {
 			var coords = lineCollection[lineKey].coords;
-			drawLine(coords);
+			drawLine(lineCollection[lineKey]);
 		});
+		reselectColor();
 	}
 }
 function sendLineToServer(linepoints){
 	var line= {
 		id: null,
-		coords: linepoints
+		coords: linepoints,
+		color: color
 	};
 	ws.send(JSON.stringify(line));
 }
@@ -31,7 +37,7 @@ var canvas;
 // }
 function goToLocation(x, y){
 	ctx = canvas.getContext('2d');
-	ctx.strokeStyle = '#00ff00';
+	ctx.strokeStyle = color;
 	ctx.lineWidth = 4;
 	ctx.beginPath();
 	ctx.moveTo(x, y);
@@ -39,19 +45,34 @@ function goToLocation(x, y){
 function drawLineTo(x, y){
 	ctx = canvas.getContext('2d');
 	ctx.lineTo(x, y);
-	ctx.strokeStyle = '#00ff00';
+	// ctx.strokeStyle = '#000000';
 	ctx.lineWidth = 4;
 	ctx.stroke();
 }
-function drawLine(linepoints){
+// function drawLine(linepoints){
+// 	ctx = canvas.getContext('2d');
+// 	ctx.beginPath();
+// 	ctx.moveTo(linepoints[0].x, linepoints[0].y); 
+// 	for(let i=1; i<linepoints.length; i++){
+// 		ctx.lineTo(linepoints[i].x, linepoints[i].y);
+// 	}
+// 	ctx.strokeStyle = '#000000';
+// 	ctx.lineWidth = 4;
+// 	ctx.stroke();
+// }
+function reselectColor(){
 	ctx = canvas.getContext('2d');
-	ctx.moveTo(linepoints[0].x+20, linepoints[0].y+20); 
+	ctx.strokeStyle = color;
+}
+function drawLine(line){
+	ctx = canvas.getContext('2d');
 	ctx.beginPath();
-	for(let i=1; i<linepoints.length; i++){
-		ctx.lineTo(linepoints[i].x+20, linepoints[i].y+20);
+	ctx.moveTo(line.coords[0].x, line.coords[0].y); 
+	for(let i=1; i<line.coords.length; i++){
+		ctx.lineTo(line.coords[i].x, line.coords[i].y);
 	}
-	ctx.strokeStyle = '#ff0000';
-	ctx.lineWidth = 20;
+	ctx.strokeStyle = line.color;
+	ctx.lineWidth = 4;
 	ctx.stroke();
 }
 function getDistance(coords1, coords2) {
@@ -63,17 +84,25 @@ var previouscords=null;
 var mouseDown=false;
 function initializeMousehandlers() {
 	$('#owo-board').mousedown((e) => {
+		if(selecting){
+			return;
+		}
 		mouseDown = true;
 		previouscords = {x:e.clientX, y:e.clientY};
 		line = [previouscords];
 		goToLocation(e.clientX,e.clientY);
 	});
 	$('#owo-board').mouseup((e) => {
+		if(selecting){
+			return;
+		}
 		mouseDown = false;
 		sendLineToServer(line);
 	});
 	$('#owo-board').mousemove((e) => {
-	//	console.log('Coords: (x: ' + e.clientX + ', y: ' + e.clientY + ' )');
+		if(selecting){
+			return;
+		}
 		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=20){
 			drawLineTo(e.clientX,e.clientY);
 			previouscords = {x:e.clientX, y:e.clientY};
@@ -81,16 +110,30 @@ function initializeMousehandlers() {
 		}
 	});
 	$('#owo-board').dblclick((e) => {
-		console.log('double click');
+		//console.log('double click');
 		//$(initializeDrawTool).hide();
 	
 	});
 }
 
-
+function initializeToolBar(){
+	$('#selector').click((e) => {
+		selecting = true;
+	});
+	$('#draw-tool').click((e) => {
+		selecting = false;
+	});
+	$('#color-black').click((e) => {
+		color = '#000000';
+	});
+	$('#color-gray').click((e) => {
+		color = '#00ff00';
+	});
+}
 $(document).ready(() => {
 	console.log ('ready');
 	initializeMousehandlers();
+	initializeToolBar();
 	canvas = document.getElementById('owo-board');
 	//initializeDrawTool();
 	document.getElementById("owo-board").width = window.innerWidth;
@@ -100,7 +143,8 @@ $(document).ready(() => {
 		document.getElementById("owo-board").height = window.innerHeight;
 		Object.keys(lineCollection).forEach((lineKey) => {
 			var coords = lineCollection[lineKey].coords;
-			drawLine(coords);
+			drawLine(lineCollection[lineKey]);
 		});
-    });
+		reselectColor();
+	});
 });

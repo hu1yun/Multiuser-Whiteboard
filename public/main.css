@@ -11,7 +11,7 @@ body{
 .palette {
 	position: absolute;
 	width: 50px;
-	height: 110px;
+	height: 230px;
 	padding: 10px;
 	background-color: rgb(134, 134, 134);
 }
@@ -20,4 +20,5 @@ body{
 	height: 50px;
 	margin: 0px 0px 10px 0px;
 	background-color: rgb(184, 184, 184);
+	cursor: pointer;
 }
