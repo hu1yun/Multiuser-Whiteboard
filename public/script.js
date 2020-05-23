@@ -1,7 +1,10 @@
 var ws = new WebSocket('ws://' + location.hostname + ':8080');
 var lineCollection = {};
-var selecting= true;
+var selecting = true;
 var color = '#000000';
+var width = 4;
+var colorSelecting = false;
+var widthSelecting = false;
 
 
 ws.onmessage = function (ev) {
@@ -25,7 +28,8 @@ function sendLineToServer(linepoints){
 	var line= {
 		id: null,
 		coords: linepoints,
-		color: color
+		color: color,
+		width: width
 	};
 	ws.send(JSON.stringify(line));
 }
@@ -38,7 +42,7 @@ var canvas;
 function goToLocation(x, y){
 	ctx = canvas.getContext('2d');
 	ctx.strokeStyle = color;
-	ctx.lineWidth = 4;
+	ctx.lineWidth = width;
 	ctx.beginPath();
 	ctx.moveTo(x, y);
 }
@@ -46,7 +50,7 @@ function drawLineTo(x, y){
 	ctx = canvas.getContext('2d');
 	ctx.lineTo(x, y);
 	// ctx.strokeStyle = '#000000';
-	ctx.lineWidth = 4;
+	ctx.lineWidth = width;
 	ctx.stroke();
 }
 // function drawLine(linepoints){
@@ -72,7 +76,7 @@ function drawLine(line){
 		ctx.lineTo(line.coords[i].x, line.coords[i].y);
 	}
 	ctx.strokeStyle = line.color;
-	ctx.lineWidth = 4;
+	ctx.lineWidth = line.width;
 	ctx.stroke();
 }
 function getDistance(coords1, coords2) {
@@ -123,11 +127,72 @@ function initializeToolBar(){
 	$('#draw-tool').click((e) => {
 		selecting = false;
 	});
+	$('#color-selector').click((e) => {
+		if(colorSelecting==true){
+			$('#color-selection').css('display','none');
+			colorSelecting = false;
+		}
+		else{
+			$('#color-selection').css('display','block');
+			colorSelecting = true;
+		}
+	});
+	$('#color-red').click((e) => {
+		color = '#ff0000';
+	});
+	$('#color-orange').click((e) => {
+		color = '#ff9933';
+	});
+	$('#color-yellow').click((e) => {
+		color = '#ffff66';
+	});
+	$('#color-green').click((e) => {
+		color = '#009900';
+	});
+	$('#color-blue').click((e) => {
+		color = '#0000ff';
+	});
+	$('#color-purple').click((e) => {
+		color = '#660066';
+	});
+	$('#color-pink').click((e) => {
+		color = '#ff6699';
+	});
+	$('#color-lime').click((e) => {
+		color = '#00ff00';
+	});
+	$('#color-cyan').click((e) => {
+		color = '#00ffff';
+	});
 	$('#color-black').click((e) => {
 		color = '#000000';
 	});
+	$('#color-white').click((e) => {
+		color = '#ffffff';
+	});
 	$('#color-gray').click((e) => {
-		color = '#00ff00';
+		color = '#444444';
+	});
+	$('#width-selector').click((e) => {
+		if(widthSelecting==true){
+			$('#width-selection').css('display','none');
+			widthSelecting = false;
+		}
+		else{
+			$('#width-selection').css('display','block');
+			widthSelecting = true;
+		}
+	});
+	$('#width-inc').click((e) => {
+		width++;
+		$('#width-display').html(width);
+	});
+	$('#width-dec').click((e) => {
+		if(width <= 1){
+			return;
+		}
+		width--;
+		$('#width-display').html(width);
 	});
 }
 $(document).ready(() => {
