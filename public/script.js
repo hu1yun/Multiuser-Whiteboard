@@ -1,4 +1,5 @@
-var ws = new WebSocket('ws://' + location.hostname + ':8080');
+const socket = io();
+
 var lineCollection = {};
 var selecting = true;
 var color = '#000000';
@@ -7,30 +8,22 @@ var pointRadius = 7;
 var colorSelecting = false;
 var widthSelecting = false;
 
-
-ws.onmessage = function (ev) {
-	var cmd = ev.data.substring(0, ev.data.indexOf(' '));
-	var object = ev.data.substring(ev.data.indexOf(' ')+1);
-	if (cmd == '/line') {
-		var line = JSON.parse(object);
-		lineCollection[line.id] = line; 
-		drawLine(line);
-	}
-	else if (cmd == '/lineCollection') {
-		lineCollection = JSON.parse(object);
-		Object.keys(lineCollection).forEach((lineKey) => {
-			var coords = lineCollection[lineKey].coords;
-			drawLine(lineCollection[lineKey]);
-		});
-		reselectColor();
-	}
-	else if (cmd == '/config'){
-		CONFIG = JSON.parse(object);
-		width = CONFIG.STARTING_LINE_WIDTH;
-		$('#width-display').html(width);
-		pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
-	}
-}
+socket.on('line', (line) => {
+	lineCollection[line.id] = line; 
+	drawLine(line);
+});
+socket.on('lineCollection', (lineCollection) => {
+	Object.keys(lineCollection).forEach((lineKey) => {
+		var coords = lineCollection[lineKey].coords;
+		drawLine(lineCollection[lineKey]);
+	});
+	reselectColor();
+});
+socket.on('config', (CONFIG) => {
+	width = CONFIG.STARTING_LINE_WIDTH;
+	$('#width-display').html(width);
+	pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
+});
 function sendLineToServer(linepoints){
 	var line= {
 		id: null,
@@ -38,7 +31,7 @@ function sendLineToServer(linepoints){
 		color: color,
 		width: width
 	};
-	ws.send(JSON.stringify(line));
+	socket.emit('line', line);
 }
 var canvas;
 // function initializeDrawTool() {
@@ -95,7 +88,7 @@ var previouscords=null;
 var mouseDown=false;
 function initializeMousehandlers() {
 	$('#owo-board').mousedown((e) => {
-		if(selecting){
+		if(mouseDown||selecting){
 			return;
 		}
 		mouseDown = true;
@@ -104,7 +97,7 @@ function initializeMousehandlers() {
 		goToLocation(e.clientX,e.clientY);
 	});
 	$('#owo-board').on('vmousedown',(e) => {
-		if(selecting){
+		if(mouseDown||selecting){
 			return;
 		}
 		mouseDown = true;
@@ -114,14 +107,28 @@ function initializeMousehandlers() {
 	});
 
 	$('#owo-board').mouseup((e) => {
-		if(selecting){
+		if(!mouseDown||selecting){
 			return;
 		}
 		mouseDown = false;
 		sendLineToServer(line);
 	});
 	$('#owo-board').on('vmouseup',(e) => {
-		if(selecting){
+		if(!mouseDown||selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').mouseleave((e) => {
+		if(!mouseDown||selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').on('vmouseout',(e) => {
+		if(!mouseDown||selecting){
 			return;
 		}
 		mouseDown = false;
