@@ -3,6 +3,23 @@ import * as serveStatic from 'serve-static';
 import * as path from 'path';
 import * as http from 'http';
 import * as WebSocket from 'ws';
+interface Line {
+    id: string, 
+    coords: Point[],
+    color: string,
+    width: number
+}
+
+interface Point {
+    x: number,
+    y: number
+}
+
+var lineCollection: { [key: string]: Line } = {};
+var lineCount = 0;
+
+
+
 const server = http.createServer();
 const wss = new WebSocket.Server({ port: 8080 });
 
@@ -13,12 +30,20 @@ var app = express();
 app.use(serveStatic(path.resolve(__dirname, 'public')));
 server.on('request', app);
 
+
 console.log('Server is online!');
 wss.on('connection', (ws) => {
-	ws.on('message', (message) =>{
-		console.log('we receive message:',message);
+    ws.send('/lineCollection '+JSON.stringify(lineCollection));
+    ws.on('message', (message: any) =>{
+        var line: Line = JSON.parse(message);
+        line.id = 'line'+lineCount;
+        lineCollection['line'+lineCount] = line;
+        lineCount++;
+        wss.clients.forEach((client)=> {
+            client.send('/line '+JSON.stringify(line));
+
+
+        });
 	});
 });
 app.listen(8000);
-
-
