@@ -3,6 +3,7 @@ import * as serveStatic from 'serve-static';
 import * as path from 'path';
 import * as http from 'http';
 import * as WebSocket from 'ws';
+import {CONFIG} from './config';
 interface Line {
     id: string, 
     coords: Point[],
@@ -33,6 +34,7 @@ server.on('request', app);
 
 console.log('Server is online!');
 wss.on('connection', (ws) => {
+    ws.send('/config '+JSON.stringify(CONFIG));
     ws.send('/lineCollection '+JSON.stringify(lineCollection));
     ws.on('message', (message: any) =>{
         var line: Line = JSON.parse(message);

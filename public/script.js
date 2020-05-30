@@ -3,6 +3,7 @@ var lineCollection = {};
 var selecting = true;
 var color = '#000000';
 var width = 4;
+var pointRadius = 7;
 var colorSelecting = false;
 var widthSelecting = false;
 
@@ -22,6 +23,12 @@ ws.onmessage = function (ev) {
 			drawLine(lineCollection[lineKey]);
 		});
 		reselectColor();
+	}
+	else if (cmd == '/config'){
+		CONFIG = JSON.parse(object);
+		width = CONFIG.STARTING_LINE_WIDTH;
+		$('#width-display').html(width);
+		pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
 	}
 }
 function sendLineToServer(linepoints){
@@ -96,7 +103,24 @@ function initializeMousehandlers() {
 		line = [previouscords];
 		goToLocation(e.clientX,e.clientY);
 	});
+	$('#owo-board').on('vmousedown',(e) => {
+		if(selecting){
+			return;
+		}
+		mouseDown = true;
+		previouscords = {x:e.clientX, y:e.clientY};
+		line = [previouscords];
+		goToLocation(e.clientX,e.clientY);
+	});
+
 	$('#owo-board').mouseup((e) => {
+		if(selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').on('vmouseup',(e) => {
 		if(selecting){
 			return;
 		}
@@ -107,12 +131,23 @@ function initializeMousehandlers() {
 		if(selecting){
 			return;
 		}
-		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=20){
+		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=pointRadius){
 			drawLineTo(e.clientX,e.clientY);
 			previouscords = {x:e.clientX, y:e.clientY};
 			line.push(previouscords);
 		}
 	});
+	$('#owo-board').on('vmousemove',(e) => {
+		if(selecting){
+			return;
+		}
+		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=pointRadius){
+			drawLineTo(e.clientX,e.clientY);
+			previouscords = {x:e.clientX, y:e.clientY};
+			line.push(previouscords);
+		}
+	});
+	
 	$('#owo-board').dblclick((e) => {
 		//console.log('double click');
 		//$(initializeDrawTool).hide();
