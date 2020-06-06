@@ -7,23 +7,29 @@ var width = 4;
 var pointRadius = 7;
 var colorSelecting = false;
 var widthSelecting = false;
+var canvas;
+
 
 socket.on('line', (line) => {
 	lineCollection[line.id] = line; 
 	drawLine(line);
 });
-socket.on('lineCollection', (lineCollection) => {
-	Object.keys(lineCollection).forEach((lineKey) => {
-		var coords = lineCollection[lineKey].coords;
-		drawLine(lineCollection[lineKey]);
+socket.on('lineCollection', (lineClctn) => {
+	clearCanvas();
+	Object.keys(lineClctn).forEach((lineKey) => {
+		drawLine(lineClctn[lineKey]);
 	});
 	reselectColor();
+	lineCollection = lineClctn;
 });
 socket.on('config', (CONFIG) => {
 	width = CONFIG.STARTING_LINE_WIDTH;
 	$('#width-display').html(width);
 	pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
 });
+function undo(){
+	socket.emit('undo');
+};
 function sendLineToServer(linepoints){
 	var line= {
 		id: null,
@@ -32,8 +38,7 @@ function sendLineToServer(linepoints){
 		width: width
 	};
 	socket.emit('line', line);
-}
-var canvas;
+};
 // function initializeDrawTool() {
 // 	ctx = canvas.getContext('2d');
 // 	ctx.strokeStyle = '#00ff00';
@@ -67,6 +72,10 @@ function drawLineTo(x, y){
 function reselectColor(){
 	ctx = canvas.getContext('2d');
 	ctx.strokeStyle = color;
+}
+function clearCanvas(){
+	ctx = canvas.getContext('2d');
+	ctx.clearRect(0,0,canvas.width, canvas.height);
 }
 function drawLine(line){
 	ctx = canvas.getContext('2d');
@@ -254,4 +263,11 @@ $(document).ready(() => {
 		});
 		reselectColor();
 	});
+	$(document).keydown(function(e){
+		if( e.which === 90 && e.ctrlKey && e.shiftKey ){
+		}
+		else if( e.which === 90 && e.ctrlKey ){
+			undo();
+		}          
+  }); 
 });
