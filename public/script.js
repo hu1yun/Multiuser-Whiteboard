@@ -12,12 +12,13 @@ socket.on('line', (line) => {
 	lineCollection[line.id] = line; 
 	drawLine(line);
 });
-socket.on('lineCollection', (lineCollection) => {
-	Object.keys(lineCollection).forEach((lineKey) => {
-		var coords = lineCollection[lineKey].coords;
-		drawLine(lineCollection[lineKey]);
+socket.on('lineCollection', (lineClctn) => {
+	Object.keys(lineClctn).forEach((lineKey) => {
+		var coords = lineClctn[lineKey].coords;
+		drawLine(lineClctn[lineKey]);
 	});
 	reselectColor();
+	lineCollection = lineClctn;
 });
 socket.on('config', (CONFIG) => {
 	width = CONFIG.STARTING_LINE_WIDTH;
