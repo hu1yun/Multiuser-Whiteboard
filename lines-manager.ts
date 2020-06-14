@@ -1,3 +1,4 @@
+import { LayersMangager } from "./layers-manager";
 
 export interface Point {
     x: number,
@@ -7,7 +8,8 @@ export interface Line {
     id: string, 
     coords: Point[],
     color: string,
-    width: number
+    width: number,
+    layerId: string
 }
 export interface LineCollection{
     id: string,
@@ -18,12 +20,15 @@ export interface LineCollection{
 
 export class LinesManager{
     public userLineCollection: {[key: string]: LineCollection};
-    public allLinesCollection: {[key: string]: Line};
+    //public allLinesCollection: {[key: string]: Line};
+    public layersMgr: LayersMangager;
     private linesAdded: number;
 
     constructor(){
         this.userLineCollection = {};
-        this.allLinesCollection = {};
+        //this.allLinesCollection = {};
+        this.layersMgr = new LayersMangager();
+        this.layersMgr.addLayer();
         this.linesAdded = 0;
     }
 
@@ -49,7 +54,8 @@ export class LinesManager{
             this.userLineCollection[id].lines[line.id] = line;
             this.userLineCollection[id].lineIds.push(line.id);
             this.userLineCollection[id].undoneLines = [];
-            this.allLinesCollection[line.id] = line;
+            // this.allLinesCollection[line.id] = line;
+            this.layersMgr.addLine(line);
             return line;
         }
         return null;
@@ -57,10 +63,12 @@ export class LinesManager{
 
     public deleteLine(id:string, lineId:string){
         if (this.userLineCollection.hasOwnProperty(id) && lineId != null && this.userLineCollection[id].lines.hasOwnProperty(lineId)){
+            let line = this.userLineCollection[id].lines[lineId];
             delete this.userLineCollection[id].lines[lineId];
             let index = this.userLineCollection[id].lineIds.indexOf(lineId);
             this.userLineCollection[id].lineIds.splice(index, 1);
-            delete this.allLinesCollection[lineId]; 
+            // delete this.allLinesCollection[lineId]; 
+            this.layersMgr.deleteLine(line.layerId, lineId);
         }
         
     }
@@ -68,7 +76,9 @@ export class LinesManager{
     public undoLine(id:string){
         if (this.userLineCollection.hasOwnProperty(id) && this.userLineCollection[id].lineIds.length > 0){
             let lineId = this.userLineCollection[id].lineIds.pop();
-            delete this.allLinesCollection[lineId]; 
+            let line = this.userLineCollection[id].lines[lineId];
+            // delete this.allLinesCollection[lineId]; 
+            this.layersMgr.deleteLine(line.layerId, lineId);
             this.userLineCollection[id].undoneLines.push(this.userLineCollection[id].lines[lineId]);
             delete this.userLineCollection[id].lines[lineId];
         }
@@ -79,7 +89,8 @@ export class LinesManager{
             let line = this.userLineCollection[id].undoneLines.pop();
             this.userLineCollection[id].lineIds.push(line.id);
             this.userLineCollection[id].lines[line.id] = line;
-            this.allLinesCollection[line.id] = line;
+            // this.allLinesCollection[line.id] = line;
+            this.layersMgr.addLine(line);
         }
     }
 }

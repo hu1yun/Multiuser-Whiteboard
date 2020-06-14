@@ -11,6 +11,7 @@ import {
 } from './lines-manager';
 
 
+
 var app = express();
 app.use(serveStatic(path.resolve(__dirname, 'public')));
 var server = http.createServer(app);
@@ -28,7 +29,8 @@ var lineMgr: LinesManager = new LinesManager();
 io.on('connection',(socket) => {
     lineMgr.addNewUser(socket.id);
     socket.emit('config',CONFIG);
-    socket.emit('lineCollection', lineMgr.allLinesCollection);
+    // socket.emit('lineCollection', lineMgr.allLinesCollection);
+    socket.emit('layersCollection', lineMgr.layersMgr.layersCollection);
     socket.on('line', (line: Line) => {
         if (line.coords == null){
             return;
@@ -39,13 +41,17 @@ io.on('connection',(socket) => {
     });
     socket.on('undo', () => {
         lineMgr.undoLine(socket.id);
-        socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
-        socket.emit('lineCollection', lineMgr.allLinesCollection);
+        // socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
+        // socket.emit('lineCollection', lineMgr.allLinesCollection);
+        socket.broadcast.emit('layersCollection', lineMgr.layersMgr.layersCollection);
+        socket.emit('layersCollection', lineMgr.layersMgr.layersCollection);
     });
     socket.on('redo', () => {
         lineMgr.redoLine(socket.id);
-        socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
-        socket.emit('lineCollection', lineMgr.allLinesCollection);
+        // socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
+        // socket.emit('lineCollection', lineMgr.allLinesCollection);
+        socket.broadcast.emit('layersCollection', lineMgr.layersMgr.layersCollection);
+        socket.emit('layersCollection', lineMgr.layersMgr.layersCollection);
     });
 });
 server.listen(8000);

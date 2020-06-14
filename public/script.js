@@ -1,6 +1,7 @@
 const socket = io();
 
-var lineCollection = {};
+// var lineCollection = {};
+var layersCollection = {};
 var selecting = true;
 var color = '#000000';
 var width = 4;
@@ -8,24 +9,37 @@ var pointRadius = 7;
 var colorSelecting = false;
 var widthSelecting = false;
 var canvas;
-
+var layerSelected = null;
 
 socket.on('line', (line) => {
-	lineCollection[line.id] = line; 
+	// lineCollection[line.id] = line;
+	layersCollection[line.layerId][line.id] = line;
 	drawLine(line);
 });
-socket.on('lineCollection', (lineClctn) => {
+// socket.on('lineCollection', (lineClctn) => {
+// 	clearCanvas();
+// 	Object.keys(lineClctn).forEach((lineKey) => {
+// 		drawLine(lineClctn[lineKey]);
+// 	});
+// 	reselectColor();
+// 	lineCollection = lineClctn;
+// });
+socket.on('layersCollection', (layerClctn) => {
 	clearCanvas();
-	Object.keys(lineClctn).forEach((lineKey) => {
-		drawLine(lineClctn[lineKey]);
+	Object.keys(layerClctn).forEach((layerKey) => {
+		Object.keys(layerClctn[layerKey]).forEach((lineKey) => {
+			drawLine(layerClctn[layerKey][lineKey]);
+		});	
 	});
 	reselectColor();
-	lineCollection = lineClctn;
+	layersCollection = layerClctn;
+	// console.log(layersCollection);
 });
 socket.on('config', (CONFIG) => {
 	width = CONFIG.STARTING_LINE_WIDTH;
 	$('#width-display').html(width);
 	pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
+	layerSelected = CONFIG.FIRST_LAYER_ID;
 });
 function undo(){
 	socket.emit('undo');
@@ -38,7 +52,8 @@ function sendLineToServer(linepoints){
 		id: null,
 		coords: linepoints,
 		color: color,
-		width: width
+		width: width,
+		layerId: layerSelected
 	};
 	socket.emit('line', line);
 };
@@ -260,9 +275,14 @@ $(document).ready(() => {
     $(window).resize(() => {
         document.getElementById("owo-board").width = window.innerWidth;
 		document.getElementById("owo-board").height = window.innerHeight;
-		Object.keys(lineCollection).forEach((lineKey) => {
-			var coords = lineCollection[lineKey].coords;
-			drawLine(lineCollection[lineKey]);
+		// Object.keys(lineCollection).forEach((lineKey) => {
+		// 	var coords = lineCollection[lineKey].coords;
+		// 	drawLine(lineCollection[lineKey]);
+		// });
+		Object.keys(layersCollection).forEach((layerKey) => {
+			Object.keys(layersCollection[layerKey]).forEach((lineKey) => {
+				drawLine(layersCollection[layerKey][lineKey]);
+			});	
 		});
 		reselectColor();
 	});
