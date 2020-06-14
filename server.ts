@@ -42,5 +42,10 @@ io.on('connection',(socket) => {
         socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
         socket.emit('lineCollection', lineMgr.allLinesCollection);
     });
+    socket.on('redo', () => {
+        lineMgr.redoLine(socket.id);
+        socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
+        socket.emit('lineCollection', lineMgr.allLinesCollection);
+    });
 });
 server.listen(8000);

@@ -30,6 +30,9 @@ socket.on('config', (CONFIG) => {
 function undo(){
 	socket.emit('undo');
 };
+function redo(){
+	socket.emit('redo');
+};
 function sendLineToServer(linepoints){
 	var line= {
 		id: null,
@@ -265,6 +268,7 @@ $(document).ready(() => {
 	});
 	$(document).keydown(function(e){
 		if( e.which === 90 && e.ctrlKey && e.shiftKey ){
+			redo();
 		}
 		else if( e.which === 90 && e.ctrlKey ){
 			undo();
