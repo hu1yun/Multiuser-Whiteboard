@@ -40,18 +40,33 @@ io.on('connection',(socket) => {
         socket.emit('line', line);
     });
     socket.on('undo', () => {
-        lineMgr.undoLine(socket.id);
-        // socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
-        // socket.emit('lineCollection', lineMgr.allLinesCollection);
-        socket.broadcast.emit('layersCollection', lineMgr.layersMgr.layersCollection);
-        socket.emit('layersCollection', lineMgr.layersMgr.layersCollection);
+        let line = lineMgr.undoLine(socket.id);
+        if (line){
+            socket.broadcast.emit('undoLine', line);
+            socket.emit('undoLine', line);
+        }
     });
     socket.on('redo', () => {
-        lineMgr.redoLine(socket.id);
-        // socket.broadcast.emit('lineCollection', lineMgr.allLinesCollection);
-        // socket.emit('lineCollection', lineMgr.allLinesCollection);
-        socket.broadcast.emit('layersCollection', lineMgr.layersMgr.layersCollection);
-        socket.emit('layersCollection', lineMgr.layersMgr.layersCollection);
+        let line = lineMgr.redoLine(socket.id);
+        if (line){
+            socket.broadcast.emit('redoLine', line);
+            socket.emit('redoLine', line);
+        }
+    });
+    socket.on('add-layer', () => {
+        let layer = lineMgr.layersMgr.addLayer();
+        socket.broadcast.emit('addLayer', layer);
+        socket.emit('addLayer', layer);
+    });
+    socket.on('delete-layer', (layerId) => {
+        if (Object.keys(lineMgr.layersMgr.layersCollection).length > 1) {
+            lineMgr.deleteLinesRelatedToLayer(layerId);
+            let layer = lineMgr.layersMgr.deleteLayer(layerId);
+            if (layer) {
+                socket.broadcast.emit('deleteLayer', layer);
+                socket.emit('deleteLayer', layer);
+            }
+        }
     });
 });
 server.listen(8000);

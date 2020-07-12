@@ -1,6 +1,5 @@
 const socket = io();
 
-// var lineCollection = {};
 var layersCollection = {};
 var selecting = true;
 var color = '#000000';
@@ -10,36 +9,45 @@ var colorSelecting = false;
 var widthSelecting = false;
 var canvas;
 var layerSelected = null;
+var rightPanelOpen = false;
 
-socket.on('line', (line) => {
-	// lineCollection[line.id] = line;
-	layersCollection[line.layerId][line.id] = line;
-	drawLine(line);
-});
-// socket.on('lineCollection', (lineClctn) => {
-// 	clearCanvas();
-// 	Object.keys(lineClctn).forEach((lineKey) => {
-// 		drawLine(lineClctn[lineKey]);
-// 	});
-// 	reselectColor();
-// 	lineCollection = lineClctn;
-// });
-socket.on('layersCollection', (layerClctn) => {
-	clearCanvas();
-	Object.keys(layerClctn).forEach((layerKey) => {
-		Object.keys(layerClctn[layerKey]).forEach((lineKey) => {
-			drawLine(layerClctn[layerKey][lineKey]);
-		});	
-	});
-	reselectColor();
-	layersCollection = layerClctn;
-	// console.log(layersCollection);
-});
 socket.on('config', (CONFIG) => {
 	width = CONFIG.STARTING_LINE_WIDTH;
 	$('#width-display').html(width);
 	pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
-	layerSelected = CONFIG.FIRST_LAYER_ID;
+});
+socket.on('layersCollection', (layerClctn) => {
+	layersCollection = layerClctn;
+	layerSelected = Object.keys(layersCollection)[0];
+	clearCanvas();
+	redrawCanvas();
+	reselectColor();
+	loadNewLayers();
+});
+socket.on('line', (line) => {
+	layersCollection[line.layerId].lines[line.id] = line;
+	if (line.author != socket.id) {
+		drawLine(line);
+	}
+});
+socket.on('undoLine', (line) => {
+	clearCanvas();
+	delete layersCollection[line.layerId].lines[line.id];
+	redrawCanvas();
+});
+socket.on('redoLine', (line) => {
+	layersCollection[line.layerId].lines[line.id] = line;
+	drawLine(line);
+});
+socket.on('addLayer', (layer) => {
+	layersCollection[layer.id] = layer;
+	loadNewLayers();
+});
+socket.on('deleteLayer', (layer) => {
+	delete layersCollection[layer.id];
+	layerSelected = Object.keys(layersCollection)[0];
+	loadNewLayers();
+	redrawCanvas();
 });
 function undo(){
 	socket.emit('undo');
@@ -57,11 +65,6 @@ function sendLineToServer(linepoints){
 	};
 	socket.emit('line', line);
 };
-// function initializeDrawTool() {
-// 	ctx = canvas.getContext('2d');
-// 	ctx.strokeStyle = '#00ff00';
-// 	ctx.lineWidth = 10;
-// }
 function goToLocation(x, y){
 	ctx = canvas.getContext('2d');
 	ctx.strokeStyle = color;
@@ -97,6 +100,7 @@ function clearCanvas(){
 }
 function drawLine(line){
 	ctx = canvas.getContext('2d');
+	// ctx.globalAlpha = .1 ;
 	ctx.beginPath();
 	ctx.moveTo(line.coords[0].x, line.coords[0].y); 
 	for(let i=1; i<line.coords.length; i++){
@@ -264,27 +268,86 @@ function initializeToolBar(){
 		$('#width-display').html(width);
 	});
 }
+
+
+function initializeRightConfigPanel(){
+	$('#trigger-right-panel').click((e) => {
+		let openLoc = $('.tool-layer').width() - 150;
+		if(rightPanelOpen){
+			$('#right-config-panel')
+				.css({left: openLoc})
+				.animate({left:'100%'}, 400, () => {
+					rightPanelOpen = false;
+					console.log('hidden');
+				});
+		}
+		else{
+			$('#right-config-panel')
+				.css({left:'100%'})
+				.animate({left: openLoc}, 400, () => {
+					rightPanelOpen = true;
+					console.log('open');
+				});
+		}
+
+	});
+	$('#layer-adder').click((e) => {
+		socket.emit('add-layer');
+
+	});
+	$('#layer-deletor').click((e) => {
+		socket.emit('delete-layer', layerSelected);
+
+	});
+}
+function loadNewLayers(){
+	let layersList = document.getElementById('layer-list');
+	layersList.innerHTML = '';
+	Object.keys(layersCollection).forEach((layerKey) => {
+		let listElement = document.createElement('li');
+		listElement.setAttribute('class', 'clickable');
+		listElement.addEventListener('click',()=> {
+			layerSelected = layerKey; 
+			console.log(layerSelected);
+		});
+		listElement.innerHTML = layerKey;
+		layersList.appendChild(listElement);
+	});
+}
+function redrawCanvas(){
+	document.getElementById("owo-board").width = window.innerWidth;
+	document.getElementById("owo-board").height = window.innerHeight;
+	Object.keys(layersCollection).forEach((layerKey) => {
+		Object.keys(layersCollection[layerKey].lines).forEach((lineKey) => {
+			drawLine(layersCollection[layerKey].lines[lineKey]);
+		});	
+	});
+	reselectColor();
+}
+function repositionTools(){
+	//right-config-panel
+	let openLoc = $('.tool-layer').width() - 150;
+	if(rightPanelOpen){
+		$('#right-config-panel')
+			.css('left', openLoc);
+	}
+	else{
+		$('#right-config-panel')
+			.css('left','100%');
+	}
+}
 $(document).ready(() => {
 	console.log ('ready');
 	initializeMousehandlers();
 	initializeToolBar();
+	initializeRightConfigPanel();
 	canvas = document.getElementById('owo-board');
 	//initializeDrawTool();
 	document.getElementById("owo-board").width = window.innerWidth;
     document.getElementById("owo-board").height = window.innerHeight;
     $(window).resize(() => {
-        document.getElementById("owo-board").width = window.innerWidth;
-		document.getElementById("owo-board").height = window.innerHeight;
-		// Object.keys(lineCollection).forEach((lineKey) => {
-		// 	var coords = lineCollection[lineKey].coords;
-		// 	drawLine(lineCollection[lineKey]);
-		// });
-		Object.keys(layersCollection).forEach((layerKey) => {
-			Object.keys(layersCollection[layerKey]).forEach((lineKey) => {
-				drawLine(layersCollection[layerKey][lineKey]);
-			});	
-		});
-		reselectColor();
+		redrawCanvas();
+		repositionTools();
 	});
 	$(document).keydown(function(e){
 		if( e.which === 90 && e.ctrlKey && e.shiftKey ){

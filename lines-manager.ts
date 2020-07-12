@@ -6,6 +6,7 @@ export interface Point {
 }
 export interface Line {
     id: string, 
+    author: string,
     coords: Point[],
     color: string,
     width: number,
@@ -47,10 +48,11 @@ export class LinesManager{
         }
     }
 
-    public addLine(id:string, line:Line){
+    public addLine(id:string, line:Line): Line{
         if (this.userLineCollection.hasOwnProperty(id)){
             line.id = 'line' + this.linesAdded;
             this.linesAdded++;
+            line.author = id;
             this.userLineCollection[id].lines[line.id] = line;
             this.userLineCollection[id].lineIds.push(line.id);
             this.userLineCollection[id].undoneLines = [];
@@ -73,24 +75,43 @@ export class LinesManager{
         
     }
 
-    public undoLine(id:string){
+    public deleteLinesRelatedToLayer(layerId:string){
+        let layer = this.layersMgr.getLayer(layerId);
+        if (layer != null){
+            Object.keys(layer.lines).forEach((lineId) => {
+                let line = layer.lines[lineId];
+                delete this.userLineCollection[line.author].lines[line.id];
+                let index = this.userLineCollection[line.author].lineIds.indexOf(line.id);
+                this.userLineCollection[line.author].lineIds.splice(index, 1);
+            });
+        }
+    }
+
+    public undoLine(id:string): Line{
         if (this.userLineCollection.hasOwnProperty(id) && this.userLineCollection[id].lineIds.length > 0){
             let lineId = this.userLineCollection[id].lineIds.pop();
-            let line = this.userLineCollection[id].lines[lineId];
+            var line = this.userLineCollection[id].lines[lineId];
             // delete this.allLinesCollection[lineId]; 
             this.layersMgr.deleteLine(line.layerId, lineId);
             this.userLineCollection[id].undoneLines.push(this.userLineCollection[id].lines[lineId]);
             delete this.userLineCollection[id].lines[lineId];
         }
-
+        return line;
     }
-    public redoLine(id:string){
+    public redoLine(id:string): Line{
         if (this.userLineCollection.hasOwnProperty(id) && this.userLineCollection[id].undoneLines.length > 0){
-            let line = this.userLineCollection[id].undoneLines.pop();
+            var line = this.userLineCollection[id].undoneLines.pop();
+            while (this.layersMgr.getLayer(line.layerId) == null) {
+                if (this.userLineCollection[id].undoneLines.length == 0) {
+                    return null;
+                }
+                line = this.userLineCollection[id].undoneLines.pop();
+            }
             this.userLineCollection[id].lineIds.push(line.id);
             this.userLineCollection[id].lines[line.id] = line;
             // this.allLinesCollection[line.id] = line;
             this.layersMgr.addLine(line);
         }
+        return line;
     }
 }
