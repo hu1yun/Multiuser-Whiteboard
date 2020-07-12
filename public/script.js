@@ -1,44 +1,70 @@
-var ws = new WebSocket('ws://' + location.hostname + ':8080');
-var lineCollection = {};
+const socket = io();
+
+var layersCollection = {};
 var selecting = true;
 var color = '#000000';
 var width = 4;
+var pointRadius = 7;
 var colorSelecting = false;
 var widthSelecting = false;
+var canvas;
+var layerSelected = null;
+var rightPanelOpen = false;
 
-
-ws.onmessage = function (ev) {
-	var cmd = ev.data.substring(0, ev.data.indexOf(' '));
-	var object = ev.data.substring(ev.data.indexOf(' ')+1);
-	if (cmd == '/line') {
-		var line = JSON.parse(object);
-		lineCollection[line.id] = line; 
+socket.on('config', (CONFIG) => {
+	width = CONFIG.STARTING_LINE_WIDTH;
+	$('#width-display').html(width);
+	pointRadius = CONFIG.POINT_DISTANCE_RADIUS;
+});
+socket.on('layersCollection', (layerClctn) => {
+	layersCollection = layerClctn;
+	layerSelected = Object.keys(layersCollection)[0];
+	clearCanvas();
+	redrawCanvas();
+	reselectColor();
+	loadNewLayers();
+});
+socket.on('line', (line) => {
+	layersCollection[line.layerId].lines[line.id] = line;
+	if (line.author != socket.id) {
 		drawLine(line);
 	}
-	else if (cmd == '/lineCollection') {
-		lineCollection = JSON.parse(object);
-		Object.keys(lineCollection).forEach((lineKey) => {
-			var coords = lineCollection[lineKey].coords;
-			drawLine(lineCollection[lineKey]);
-		});
-		reselectColor();
-	}
-}
+});
+socket.on('undoLine', (line) => {
+	clearCanvas();
+	delete layersCollection[line.layerId].lines[line.id];
+	redrawCanvas();
+});
+socket.on('redoLine', (line) => {
+	layersCollection[line.layerId].lines[line.id] = line;
+	drawLine(line);
+});
+socket.on('addLayer', (layer) => {
+	layersCollection[layer.id] = layer;
+	loadNewLayers();
+});
+socket.on('deleteLayer', (layer) => {
+	delete layersCollection[layer.id];
+	layerSelected = Object.keys(layersCollection)[0];
+	loadNewLayers();
+	redrawCanvas();
+});
+function undo(){
+	socket.emit('undo');
+};
+function redo(){
+	socket.emit('redo');
+};
 function sendLineToServer(linepoints){
 	var line= {
 		id: null,
 		coords: linepoints,
 		color: color,
-		width: width
+		width: width,
+		layerId: layerSelected
 	};
-	ws.send(JSON.stringify(line));
-}
-var canvas;
-// function initializeDrawTool() {
-// 	ctx = canvas.getContext('2d');
-// 	ctx.strokeStyle = '#00ff00';
-// 	ctx.lineWidth = 10;
-// }
+	socket.emit('line', line);
+};
 function goToLocation(x, y){
 	ctx = canvas.getContext('2d');
 	ctx.strokeStyle = color;
@@ -68,8 +94,13 @@ function reselectColor(){
 	ctx = canvas.getContext('2d');
 	ctx.strokeStyle = color;
 }
+function clearCanvas(){
+	ctx = canvas.getContext('2d');
+	ctx.clearRect(0,0,canvas.width, canvas.height);
+}
 function drawLine(line){
 	ctx = canvas.getContext('2d');
+	// ctx.globalAlpha = .1 ;
 	ctx.beginPath();
 	ctx.moveTo(line.coords[0].x, line.coords[0].y); 
 	for(let i=1; i<line.coords.length; i++){
@@ -88,7 +119,7 @@ var previouscords=null;
 var mouseDown=false;
 function initializeMousehandlers() {
 	$('#owo-board').mousedown((e) => {
-		if(selecting){
+		if(mouseDown||selecting){
 			return;
 		}
 		mouseDown = true;
@@ -96,8 +127,39 @@ function initializeMousehandlers() {
 		line = [previouscords];
 		goToLocation(e.clientX,e.clientY);
 	});
+	$('#owo-board').on('vmousedown',(e) => {
+		if(mouseDown||selecting){
+			return;
+		}
+		mouseDown = true;
+		previouscords = {x:e.clientX, y:e.clientY};
+		line = [previouscords];
+		goToLocation(e.clientX,e.clientY);
+	});
+
 	$('#owo-board').mouseup((e) => {
-		if(selecting){
+		if(!mouseDown||selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').on('vmouseup',(e) => {
+		if(!mouseDown||selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').mouseleave((e) => {
+		if(!mouseDown||selecting){
+			return;
+		}
+		mouseDown = false;
+		sendLineToServer(line);
+	});
+	$('#owo-board').on('vmouseout',(e) => {
+		if(!mouseDown||selecting){
 			return;
 		}
 		mouseDown = false;
@@ -107,12 +169,23 @@ function initializeMousehandlers() {
 		if(selecting){
 			return;
 		}
-		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=20){
+		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=pointRadius){
 			drawLineTo(e.clientX,e.clientY);
 			previouscords = {x:e.clientX, y:e.clientY};
 			line.push(previouscords);
 		}
 	});
+	$('#owo-board').on('vmousemove',(e) => {
+		if(selecting){
+			return;
+		}
+		if(mouseDown && getDistance(previouscords,{x:e.clientX, y:e.clientY})>=pointRadius){
+			drawLineTo(e.clientX,e.clientY);
+			previouscords = {x:e.clientX, y:e.clientY};
+			line.push(previouscords);
+		}
+	});
+	
 	$('#owo-board').dblclick((e) => {
 		//console.log('double click');
 		//$(initializeDrawTool).hide();
@@ -195,21 +268,93 @@ function initializeToolBar(){
 		$('#width-display').html(width);
 	});
 }
+
+
+function initializeRightConfigPanel(){
+	$('#trigger-right-panel').click((e) => {
+		let openLoc = $('.tool-layer').width() - 150;
+		if(rightPanelOpen){
+			$('#right-config-panel')
+				.css({left: openLoc})
+				.animate({left:'100%'}, 400, () => {
+					rightPanelOpen = false;
+					console.log('hidden');
+				});
+		}
+		else{
+			$('#right-config-panel')
+				.css({left:'100%'})
+				.animate({left: openLoc}, 400, () => {
+					rightPanelOpen = true;
+					console.log('open');
+				});
+		}
+
+	});
+	$('#layer-adder').click((e) => {
+		socket.emit('add-layer');
+
+	});
+	$('#layer-deletor').click((e) => {
+		socket.emit('delete-layer', layerSelected);
+
+	});
+}
+function loadNewLayers(){
+	let layersList = document.getElementById('layer-list');
+	layersList.innerHTML = '';
+	Object.keys(layersCollection).forEach((layerKey) => {
+		let listElement = document.createElement('li');
+		listElement.setAttribute('class', 'clickable');
+		listElement.addEventListener('click',()=> {
+			layerSelected = layerKey; 
+			console.log(layerSelected);
+		});
+		listElement.innerHTML = layerKey;
+		layersList.appendChild(listElement);
+	});
+}
+function redrawCanvas(){
+	document.getElementById("owo-board").width = window.innerWidth;
+	document.getElementById("owo-board").height = window.innerHeight;
+	Object.keys(layersCollection).forEach((layerKey) => {
+		Object.keys(layersCollection[layerKey].lines).forEach((lineKey) => {
+			drawLine(layersCollection[layerKey].lines[lineKey]);
+		});	
+	});
+	reselectColor();
+}
+function repositionTools(){
+	//right-config-panel
+	let openLoc = $('.tool-layer').width() - 150;
+	if(rightPanelOpen){
+		$('#right-config-panel')
+			.css('left', openLoc);
+	}
+	else{
+		$('#right-config-panel')
+			.css('left','100%');
+	}
+}
 $(document).ready(() => {
 	console.log ('ready');
 	initializeMousehandlers();
 	initializeToolBar();
+	initializeRightConfigPanel();
 	canvas = document.getElementById('owo-board');
 	//initializeDrawTool();
 	document.getElementById("owo-board").width = window.innerWidth;
     document.getElementById("owo-board").height = window.innerHeight;
     $(window).resize(() => {
-        document.getElementById("owo-board").width = window.innerWidth;
-		document.getElementById("owo-board").height = window.innerHeight;
-		Object.keys(lineCollection).forEach((lineKey) => {
-			var coords = lineCollection[lineKey].coords;
-			drawLine(lineCollection[lineKey]);
-		});
-		reselectColor();
+		redrawCanvas();
+		repositionTools();
 	});
+	$(document).keydown(function(e){
+		if( e.which === 90 && e.ctrlKey && e.shiftKey ){
+			redo();
+		}
+		else if( e.which === 90 && e.ctrlKey ){
+			undo();
+		}          
+  }); 
 });
